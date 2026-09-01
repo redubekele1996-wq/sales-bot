@@ -17,7 +17,7 @@ from telegram.ext import (
     filters,
 )
 
-# --- 1. Web Server (Render እንዳይዘጋ) ---
+# --- 1. Web Server ---
 class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -28,7 +28,7 @@ def run_web_server():
     server = HTTPServer(('0.0.0.0', 10000), SimpleHandler)
     server.serve_forever()
 
-# --- 2. Google Sheets ማረጋገጫ ---
+# --- 2. Google Sheets ---
 scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive"
@@ -43,7 +43,7 @@ def get_sheet():
         return client.open("Sales Tracking").sheet1
     return None
 
-# --- 3. Conversation States ---
+# --- 3. Conversation ---
 SALESPERSON, TOTAL_CALL, FOLLOW_UP, SURVEY, OFFICE_VISIT, SHOW, NOTE = range(7)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -101,9 +101,9 @@ async def get_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
             sheet.append_row(row_data)
             await update.message.reply_text("✅ እናመሰግናለን! ሁሉም መረጃዎች በትክክል Google Sheet ላይ ተመዝግበዋል።")
         else:
-            await update.message.reply_text("✅ እናመሰግናለን! ሁሉም መረጃዎች በትክክል Google Sheet ላይ ተመዝግበዋል።")
+            await update.message.reply_text("❌ ስህተት፡ CREDENTIALS_JSON አልተገኘም።")
     except Exception as e:
-        await update.message.reply_text("✅ እናመሰግናለን! ሁሉም መረጃዎች በትክክል Google Sheet ላይ ተመዝግበዋል።")
+        await update.message.reply_text(f"❌ ስህተት ተፈጥሯል፦ {str(e)}")
         
     return ConversationHandler.END
 
