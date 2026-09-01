@@ -53,7 +53,7 @@ async def handle_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("ይቅርታ፣ ስህተት ተፈጥሯል።")
 
 # --- 4. Main Execution ---
-if name == 'main':
+if __name__ == '__main__':
     threading.Thread(target=run_web_server, daemon=True).start()
     
     BOT_TOKEN = os.environ.get("BOT_TOKEN")
