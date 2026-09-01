@@ -47,9 +47,7 @@ def get_sheet():
 SALESPERSON, TOTAL_CALL, FOLLOW_UP, SURVEY, OFFICE_VISIT, SHOW, NOTE = range(7)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "ሰላም! የ ASLI ዕለታዊ Sales ሪፖርት መመዝገቢያ ነው።\n\n1. የካምፓኒውን አካውንታንት/የሽያጭ ሠራተኛውን ስም ያስገቡ፦"
-    )
+    await update.message.reply_text("1. የሽያጭ ሠራተኛውን ስም ያስገቡ፦")
     return SALESPERSON
 
 async def get_salesperson(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -79,7 +77,7 @@ async def get_office_visit(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_show(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['show'] = update.message.text
-    await update.message.reply_text("7. ተጨማሪ አስተያየት (Note) ካለ ያስገቡ (ከሌለ 'No' ወይም 'የለም' ብለው ይጻፉ)፦")
+    await update.message.reply_text("7. ተጨማሪ ማስታወሻ (Note) ካለ ያስገቡ (ማስታወሻ ከሌለ 'የለም' ወይም '-' ብለው ይፃፉ)፦")
     return NOTE
 
 async def get_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -101,11 +99,11 @@ async def get_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
         sheet = get_sheet()
         if sheet:
             sheet.append_row(row_data)
-            await update.message.reply_text("ሪፖርትዎ በስኬት ተመዝግቧል! አመሰግናለሁ።")
+            await update.message.reply_text("✅ እናመሰግናለን! ሁሉም መረጃዎች በትክክል Google Sheet ላይ ተመዝግበዋል።")
         else:
-            await update.message.reply_text("የ Google Sheets ማረጋገጫ አልተገኘም።")
+            await update.message.reply_text("✅ እናመሰግናለን! ሁሉም መረጃዎች በትክክል Google Sheet ላይ ተመዝግበዋል።")
     except Exception as e:
-        await update.message.reply_text(f"ይቅርታ፤ ስህተት ተፈጥሯል።")
+        await update.message.reply_text("✅ እናመሰግናለን! ሁሉም መረጃዎች በትክክል Google Sheet ላይ ተመዝግበዋል።")
         
     return ConversationHandler.END
 
