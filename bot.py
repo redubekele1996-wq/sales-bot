@@ -31,12 +31,12 @@ def get_sheet():
         creds_dict = json.loads(creds_json_str)
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         client = gspread.authorize(creds)
-        return client.open("Sales Tracking").sheet1  # የ Sheet ስምህን እዚህ ጋር አስተካክለው
+        return client.open("Googl sheet daily report").sheet1  # የ Sheet ስምህን እዚህ ጋር አስተካክለው
     return None
 
 # --- 3. የቦት ምላሾች ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("ሰላም! የ NEXORA Business Group የሽያጭ እና ክትትል ሪፖርት መቀበያ ቦት ነው። ዕለታዊ ሪፖርትህን አሁን መላክ ትችላለህ።")
+    await update.message.reply_text("ሰላም! የ "ሰላም! የዕለታዊ የሽያጭ ሪፖርት መ መቀበያ ቦት ነው። ዕለታዊ ሪፖርትዎን አሁን መላክ ይችላሉ።")
 
 async def handle_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.message.from_user.first_name
