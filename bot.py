@@ -52,11 +52,15 @@ async def handle_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text("ይቅርታ፣ ስህተት ተፈጥሯል።")
 
-# --- 4. Main Execution ---
+#  --- 4. Main Execution ---
 if __name__ == '__main__':
     threading.Thread(target=run_web_server, daemon=True).start()
     
     BOT_TOKEN = os.environ.get("BOT_TOKEN")
+    
+    if not BOT_TOKEN:
+        raise ValueError("BOT_TOKEN በ Render Environment Variables ውስጥ አልተገኘም!")
+        
     app = Application.builder().token(BOT_TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
