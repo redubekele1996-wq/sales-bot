@@ -1,25 +1,34 @@
 import os
 import json
+import asyncio
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from datetime import datetime
+
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    ConversationHandler,
+    ContextTypes,
+    filters,
+)
 
-# --- 1. Render Port እንዳይዘጋ Dummy Web Server ---
-class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
+# --- 1. Web Server (Render እንዳይዘጋ) ---
+class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"Bot is running successfully!")
+        self.wfile.write(b"HELLO, WORLD!")
 
 def run_web_server():
-    port = int(os.environ.get("PORT", 10000))
-    server = HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)
+    server = HTTPServer(('0.0.0.0', 10000), SimpleHandler)
     server.serve_forever()
 
-# --- 2. የ Google Sheets ማረጋገጫ ---
+# --- 2. Google Sheets ማረጋገጫ ---
 scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive"
@@ -31,40 +40,103 @@ def get_sheet():
         creds_dict = json.loads(creds_json_str)
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         client = gspread.authorize(creds)
-        return client.open("Googl sheet daily report").sheet1  # የ Sheet ስምህን እዚህ ጋር አስተካክለው
+        return client.open("Sales Tracking").sheet1
     return None
 
-# --- 3. የቦት ምላሾች ---
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("ሰላም! የ "ሰላም! የዕለታዊ የሽያጭ ሪፖርት መ መቀበያ ቦት ነው። ዕለታዊ ሪፖርትዎን አሁን መላክ ይችላሉ።")
+# --- 3. Conversation States ---
+SALESPERSON, TOTAL_CALL, FOLLOW_UP, SURVEY, OFFICE_VISIT, SHOW, NOTE = range(7)
 
-async def handle_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_name = update.message.from_user.first_name
-    report_text = update.message.text
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "ሰላም! የ ASLI ዕለታዊ Sales ሪፖርት መመዝገቢያ ነው።\n\n1. የካምፓኒውን አካውንታንት/የሽያጭ ሠራተኛውን ስም ያስገቡ፦"
+    )
+    return SALESPERSON
+
+async def get_salesperson(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['salesperson'] = update.message.text
+    await update.message.reply_text("2. የዛሬው Total Call ብዛት ስንት ነው?")
+    return TOTAL_CALL
+
+async def get_total_call(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['total_call'] = update.message.text
+    await update.message.reply_text("3. የዛሬው Follow-up ብዛት ስንት ነው?")
+    return FOLLOW_UP
+
+async def get_follow_up(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['follow_up'] = update.message.text
+    await update.message.reply_text("4. የዛሬው Survey ብዛት ስንት ነው?")
+    return SURVEY
+
+async def get_survey(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['survey'] = update.message.text
+    await update.message.reply_text("5. የዛሬው Office Visit ብዛት ስንት ነው?")
+    return OFFICE_VISIT
+
+async def get_office_visit(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['office'] = update.message.text
+    await update.message.reply_text("6. የዛሬው Show ብዛት ስንት ነው?")
+    return SHOW
+
+async def get_show(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['show'] = update.message.text
+    await update.message.reply_text("7. ተጨማሪ አስተያየት (Note) ካለ ያስገቡ (ከሌለ 'No' ወይም 'የለም' ብለው ይጻፉ)፦")
+    return NOTE
+
+async def get_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['note'] = update.message.text
+    today_date = datetime.now().strftime("%Y-%m-%d")
+    
+    row_data = [
+        today_date,
+        context.user_data.get('salesperson', ''),
+        context.user_data.get('total_call', ''),
+        context.user_data.get('follow_up', ''),
+        context.user_data.get('survey', ''),
+        context.user_data.get('office', ''),
+        context.user_data.get('show', ''),
+        context.user_data.get('note', '')
+    ]
     
     try:
         sheet = get_sheet()
         if sheet:
-            sheet.append_row([user_name, report_text])
-            await update.message.reply_text("ሪፖርትህ በስኬት ተመዝግቧል! እናመሰግናለን።")
+            sheet.append_row(row_data)
+            await update.message.reply_text("ሪፖርትዎ በስኬት ተመዝግቧል! አመሰግናለሁ።")
         else:
             await update.message.reply_text("የ Google Sheets ማረጋገጫ አልተገኘም።")
     except Exception as e:
-        await update.message.reply_text("ይቅርታ፣ ስህተት ተፈጥሯል።")
+        await update.message.reply_text(f"ይቅርታ፤ ስህተት ተፈጥሯል።")
+        
+    return ConversationHandler.END
 
-#  --- 4. Main Execution ---
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("ሪፖርት መመዝገቡ ተቋርጧል።")
+    return ConversationHandler.END
+
+# --- 4. Main Execution ---
 if __name__ == '__main__':
     threading.Thread(target=run_web_server, daemon=True).start()
-    
+
     BOT_TOKEN = os.environ.get("BOT_TOKEN")
-    
     if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN በ Render Environment Variables ውስጥ አልተገኘም!")
-        
+
     app = Application.builder().token(BOT_TOKEN).build()
-    
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_report))
-    
+
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler("start", start)],
+        states={
+            SALESPERSON: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_salesperson)],
+            TOTAL_CALL: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_total_call)],
+            FOLLOW_UP: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_follow_up)],
+            SURVEY: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_survey)],
+            OFFICE_VISIT: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_office_visit)],
+            SHOW: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_show)],
+            NOTE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_note)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+    )
+
+    app.add_handler(conv_handler)
     print("Bot is running...")
     app.run_polling()
